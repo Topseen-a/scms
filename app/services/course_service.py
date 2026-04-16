@@ -1,82 +1,74 @@
+from app.exceptions.course_exceptions import InvalidFacilitatorException, CourseNotFoundException
+from app.models.course import Course
+from app.models.role import Role
 from app.repositories.course_repository import CourseRepository
 from app.repositories.user_repository import UserRepository
-from app.models.course import Course
-from app.schemas.course_schema import CourseCreate
-from app.exceptions.course_exceptions import (
-    CourseNotFoundException,
-    InvalidFacilitatorException
-)
+from app.schemas.course_schema import CreateCourseRequest, CreateCourseResponse
 
 
 class CourseService:
-
     def __init__(self):
-        self.course_repository = CourseRepository()
-        self.user_repository = UserRepository()
+        self.course_repo = CourseRepository()
+        self.user_repo = UserRepository()
 
-    def create_course(self, course: CourseCreate):
-        facilitator = self.user_repository.get_user_by_id(course.facilitator_id)
+    def create_course(self, data):
+        request = CreateCourseRequest(data)
+        errors = request.validate_course_request()
+        if errors:
+            return {"errors": errors}
+
+        facilitator = self.user_repo.get_user_by_id(request.facilitator_id)
 
         if not facilitator:
-            raise InvalidFacilitatorException("Facilitator not found")
+            raise InvalidFacilitatorException()
+        if not facilitator.role != Role.FACILITATOR:
+            return {"errors": "User is not a facilitator"}
 
-        if facilitator["role"] != "facilitator":
-            raise InvalidFacilitatorException("User is not a facilitator")
-
-        course_data = course.model_dump()
-        course_model = Course(**course_data)
-        result = self.course_repository.create_course(
-            course_model.to_dict()
+        course = Course(
+            title=request.title,
+            description=request.description,
+            code=request.code,
+            facilitator_id=request.facilitator_id
         )
 
-        course_model.id = str(result.inserted_id)
-        return self._format_response(course_model)
+        saved_course = self.course_repo.create_course(course)
+        return CreateCourseResponse(saved_course).to_dict()
 
-    def get_course_by_id(self, course_id: str):
-        course = self.course_repository.get_course_by_id(course_id)
-
+    def get_course_by_id(self, course_id: int):
+        course = self.course_repo.get_course_by_id(course_id)
         if not course:
-            raise CourseNotFoundException("Course not found")
+            raise CourseNotFoundException()
 
-        return self._format_response(Course.from_dict(course))
+        return CreateCourseResponse(course).to_dict()
 
     def get_all_courses(self):
-        courses = self.course_repository.get_all_courses()
+        courses = self.course_repo.get_all_courses()
+        return [CreateCourseResponse(course).to_dict() for course in courses]
 
-        return [
-            self._format_response(Course.from_dict(course))
-            for course in courses
-        ]
+    def get_courses_by_facilitator_id(self, facilitator_id: int):
+        courses = self.course_repo.get_courses_by_facilitator(facilitator_id)
+        return [CreateCourseResponse(course).to_dict() for course in courses]
 
-    def get_courses_by_facilitator(self, facilitator_id: str):
-        courses = self.course_repository.get_courses_by_facilitator(facilitator_id)
+    def update_course(self, course: Course, data):
+        course = self.course_repo.get_course_by_id(course.id)
+        if not course:
+            raise CourseNotFoundException()
+        if "title" in data:
+            course.title = data["title"]
+        if "description" in data:
+            course.description = data["description"]
+        if "code" in data:
+            course.code = data["code"]
+        if "facilitator_id" in data:
+            course.facilitator_id = data["facilitator_id"]
 
-        return [
-            self._format_response(Course.from_dict(course))
-            for course in courses
-        ]
+        updated_course = self.course_repo.update_course(course)
+        return CreateCourseResponse(updated_course).to_dict()
 
-    def update_course(self, course_id: str, update_data: dict):
-        result = self.course_repository.update_course(course_id, update_data)
+    def delete_course(self, course_id: int):
+        course = self.course_repo.get_course_by_id(course_id)
+        if not course:
+            raise CourseNotFoundException()
 
-        if result.modified_count == 0:
-            raise CourseNotFoundException("Course not found")
-
-        return {"message": "Course updated successfully"}
-
-    def delete_course(self, course_id: str):
-        result = self.course_repository.delete_course(course_id)
-
-        if result.deleted_count == 0:
-            raise CourseNotFoundException("Course not found")
-
+        self.course_repo.delete_course(course)
         return {"message": "Course deleted successfully"}
-
-    def _format_response(self, course: Course):
-        return {
-            "id": course.id,
-            "title": course.title,
-            "description": course.description,
-            "code": course.code,
-            "facilitator_id": course.facilitator_id
-        }
