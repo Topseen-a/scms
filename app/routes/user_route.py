@@ -3,7 +3,7 @@ from app.services.user_service import UserService
 from app.exceptions.user_exceptions import UserNotFoundException, InvalidUserRoleException, EmailAlreadyExistsException
 
 
-user_bp = Blueprint("users", __name__, url_prefix="/api/users")
+user_bp = Blueprint("user_bp", __name__)
 user_service = UserService()
 
 

@@ -8,7 +8,7 @@ class Course(db.Model):
     title = db.Column(db.String(50), nullable=False)
     description = db.Column(db.String(50), nullable=False)
     code = db.Column(db.String(50), nullable=False)
-    facilitator_id = db.Column(db.Integer, db.ForeignKey('facilitators.id'), nullable=False)
+    facilitator_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     def to_dict(self):
         return {

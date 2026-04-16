@@ -10,7 +10,7 @@ class User(db.Model):
     email = db.Column(db.String(50), unique=True, nullable=False)
     phone_number = db.Column(db.String(11), nullable=False)
     role = db.Column(db.Enum(Role), nullable=False)
-    courses = db.relationship("Course", backref="user", lazy=True, cascade="all, delete-orphan")
+    courses = db.relationship("Course", backref="facilitator", lazy=True, cascade="all, delete-orphan")
 
     def to_dict(self):
         return {

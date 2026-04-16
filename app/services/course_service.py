@@ -45,7 +45,7 @@ class CourseService:
         courses = self.course_repo.get_all_courses()
         return [CreateCourseResponse(course).to_dict() for course in courses]
 
-    def get_courses_by_facilitator_id(self, facilitator_id: int):
+    def get_courses_by_facilitator(self, facilitator_id: int):
         courses = self.course_repo.get_courses_by_facilitator(facilitator_id)
         return [CreateCourseResponse(course).to_dict() for course in courses]
 
